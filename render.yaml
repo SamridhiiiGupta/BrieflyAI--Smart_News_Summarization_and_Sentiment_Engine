@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: brieflyai
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python -c "import nltk; nltk.download('punkt_tab', quiet=True); nltk.download('vader_lexicon', quiet=True); nltk.download('stopwords', quiet=True)"
+    startCommand: gunicorn wsgi:app --workers 2 --threads 2 --timeout 120 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: FLASK_DEBUG
+        value: false

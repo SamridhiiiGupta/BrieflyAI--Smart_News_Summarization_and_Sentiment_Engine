@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+venv/
+env/
+.env/
+.venv/
+
+# Environment variables
+.env
+.env.local
+
+# NLTK data (downloaded at runtime on Render)
+nltk_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
