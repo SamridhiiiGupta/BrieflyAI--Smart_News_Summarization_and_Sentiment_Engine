@@ -1,120 +1,205 @@
 "use strict";
 
-/* ════════════════════════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════════════════════
    BrieflyAI — Premium Interaction System
-   Every interaction is coordinated through this single file.
-════════════════════════════════════════════════════════════════════════════ */
+════════════════════════════════════════════════════════════════════════ */
 
 
-/* ── 1. STARFIELD ─────────────────────────────────────────────────────────── */
-(function buildStarfield() {
-    const scene = document.createElement("div");
-    scene.className = "starfield";
-    for (let i = 0; i < 120; i++) {
-        const s = document.createElement("div");
-        const size = Math.random() * 1.8 + 0.3;
-        Object.assign(s.style, {
-            position:        "absolute",
-            left:            `${Math.random() * 100}%`,
-            top:             `${Math.random() * 100}%`,
-            width:           `${size}px`,
-            height:          `${size}px`,
-            background:      "rgba(255,255,255,0.8)",
-            borderRadius:    "50%",
-            animation:       `twinkle ${4 + Math.random() * 8}s ease-in-out ${Math.random() * 6}s infinite`,
-        });
-        if (Math.random() > 0.6) s.style.boxShadow = "0 0 3px rgba(255,255,255,0.6)";
-        scene.appendChild(s);
+/* ── 1. CANVAS STARFIELD ─────────────────────────────────────────────── */
+(function initStarfield() {
+    const canvas = document.createElement("canvas");
+    canvas.id = "starfield-canvas";
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext("2d");
+
+    let W, H, stars = [], shootingStars = [];
+
+    function resize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
     }
-    document.body.appendChild(scene);
+
+    function makeStar() {
+        return {
+            x:       Math.random() * W,
+            y:       Math.random() * H,
+            r:       Math.random() * 1.4 + 0.2,
+            alpha:   Math.random(),
+            dAlpha:  (Math.random() * 0.006 + 0.002) * (Math.random() > 0.5 ? 1 : -1),
+            color:   Math.random() > 0.85
+                         ? `hsl(${200 + Math.random()*80},80%,85%)`  // blue-purple tint
+                         : "rgba(255,255,255,1)",
+        };
+    }
+
+    function makeShootingStar() {
+        const angle = (Math.random() * 30 + 10) * Math.PI / 180;
+        return {
+            x:    Math.random() * W * 0.7,
+            y:    Math.random() * H * 0.4,
+            len:  Math.random() * 180 + 80,
+            speed: Math.random() * 12 + 8,
+            alpha: 1,
+            angle,
+            vx: Math.cos(angle),
+            vy: Math.sin(angle),
+            tail: [],
+            life:  1,
+        };
+    }
+
+    function initStars() {
+        stars = Array.from({ length: 160 }, makeStar);
+    }
+
+    function spawnShootingStar() {
+        if (shootingStars.length < 2 && Math.random() < 0.004) {
+            shootingStars.push(makeShootingStar());
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Stars
+        stars.forEach(s => {
+            s.alpha += s.dAlpha;
+            if (s.alpha <= 0 || s.alpha >= 1) s.dAlpha *= -1;
+            s.alpha = Math.max(0.05, Math.min(1, s.alpha));
+
+            ctx.save();
+            ctx.globalAlpha = s.alpha * 0.9;
+            ctx.fillStyle = s.color;
+            ctx.shadowBlur  = s.r > 1 ? 6 : 0;
+            ctx.shadowColor = s.color;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        });
+
+        // Shooting stars
+        shootingStars = shootingStars.filter(ss => ss.life > 0);
+        shootingStars.forEach(ss => {
+            ss.x += ss.vx * ss.speed;
+            ss.y += ss.vy * ss.speed;
+            ss.life -= 0.018;
+
+            const grad = ctx.createLinearGradient(
+                ss.x, ss.y,
+                ss.x - ss.vx * ss.len, ss.y - ss.vy * ss.len
+            );
+            grad.addColorStop(0, `rgba(200,190,255,${ss.life})`);
+            grad.addColorStop(1, "rgba(200,190,255,0)");
+
+            ctx.save();
+            ctx.globalAlpha = ss.life;
+            ctx.strokeStyle = grad;
+            ctx.lineWidth   = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(ss.x, ss.y);
+            ctx.lineTo(ss.x - ss.vx * ss.len, ss.y - ss.vy * ss.len);
+            ctx.stroke();
+            ctx.restore();
+        });
+
+        spawnShootingStar();
+        requestAnimationFrame(draw);
+    }
+
+    resize();
+    initStars();
+    draw();
+    window.addEventListener("resize", () => { resize(); initStars(); });
 })();
 
 
-/* ── 2. RIPPLE on .ripple-btn ─────────────────────────────────────────────── */
+/* ── 2. RIPPLE ────────────────────────────────────────────────────────── */
 document.addEventListener("pointerdown", (e) => {
     const btn = e.target.closest(".ripple-btn");
     if (!btn) return;
-    const rect  = btn.getBoundingClientRect();
-    const size  = Math.max(rect.width, rect.height) * 1.6;
-    const wave  = document.createElement("span");
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 1.6;
+    const wave = document.createElement("span");
     wave.className = "ripple-wave";
     Object.assign(wave.style, {
-        width:  `${size}px`,
-        height: `${size}px`,
-        left:   `${e.clientX - rect.left - size / 2}px`,
-        top:    `${e.clientY - rect.top  - size / 2}px`,
+        width:  `${size}px`, height: `${size}px`,
+        left:   `${e.clientX - rect.left  - size / 2}px`,
+        top:    `${e.clientY - rect.top   - size / 2}px`,
     });
     btn.appendChild(wave);
     wave.addEventListener("animationend", () => wave.remove(), { once: true });
 });
 
 
-/* ── 3. MAGNETIC BUTTON (primary CTA only) ────────────────────────────────── */
+/* ── 3. MAGNETIC CTA ──────────────────────────────────────────────────── */
 (function initMagnetic() {
     const btn = document.getElementById("submit-btn");
     if (!btn) return;
-
     btn.addEventListener("mousemove", (e) => {
-        const rect   = btn.getBoundingClientRect();
-        const cx     = rect.left + rect.width  / 2;
-        const cy     = rect.top  + rect.height / 2;
-        const dx     = (e.clientX - cx) * 0.28;
-        const dy     = (e.clientY - cy) * 0.28;
-        btn.style.transform = `translate(${dx}px, ${dy}px) scale(1.03)`;
+        const r = btn.getBoundingClientRect();
+        const dx = (e.clientX - (r.left + r.width  / 2)) * 0.28;
+        const dy = (e.clientY - (r.top  + r.height / 2)) * 0.28;
+        btn.style.transform = `translate(${dx}px,${dy}px) scale(1.03)`;
     });
-
-    btn.addEventListener("mouseleave", () => {
-        btn.style.transform = "";
-    });
+    btn.addEventListener("mouseleave", () => { btn.style.transform = ""; });
 })();
 
 
-/* ── 4. 3-D CARD TILT ─────────────────────────────────────────────────────── */
+/* ── 4. 3-D CARD TILT ────────────────────────────────────────────────── */
 function initTilt(el) {
     el.addEventListener("mousemove", (e) => {
-        const rect = el.getBoundingClientRect();
-        const cx   = rect.left + rect.width  / 2;
-        const cy   = rect.top  + rect.height / 2;
-        const dx   = (e.clientX - cx) / (rect.width  / 2);   // -1 … 1
-        const dy   = (e.clientY - cy) / (rect.height / 2);   // -1 … 1
-        const tiltX = dy * -5;   // degrees
-        const tiltY = dx *  5;
-        el.style.transform =
-            `perspective(900px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateY(-4px) scale(1.01)`;
-        el.style.boxShadow =
-            `0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(123,104,238,0.3)`;
+        const r  = el.getBoundingClientRect();
+        const dx = (e.clientX - (r.left + r.width  / 2)) / (r.width  / 2);
+        const dy = (e.clientY - (r.top  + r.height / 2)) / (r.height / 2);
+        el.style.transform = `perspective(900px) rotateX(${dy * -5}deg) rotateY(${dx * 5}deg) translateY(-4px) scale(1.01)`;
+        el.style.boxShadow = "0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(123,104,238,0.25)";
     });
-
-    el.addEventListener("mouseleave", () => {
-        el.style.transform = "";
-        el.style.boxShadow = "";
-    });
+    el.addEventListener("mouseleave", () => { el.style.transform = ""; el.style.boxShadow = ""; });
 }
-
 document.querySelectorAll(".tilt-card").forEach(initTilt);
 
 
-/* ── 5. SCROLL PARALLAX for background particles ─────────────────────────── */
+/* ── 5. PARALLAX on background orbs ─────────────────────────────────── */
 (function initParallax() {
     const particles = document.querySelectorAll(".bg-particle");
-    const speeds    = [0.04, 0.07, 0.05, 0.06];
-
+    const speeds    = [0.03, 0.06, 0.045, 0.055];
     let ticking = false;
     window.addEventListener("scroll", () => {
         if (ticking) return;
         ticking = true;
         requestAnimationFrame(() => {
             const y = window.scrollY;
-            particles.forEach((p, i) => {
-                p.style.transform = `translateY(${y * speeds[i]}px)`;
-            });
+            particles.forEach((p, i) => { p.style.transform = `translateY(${y * speeds[i]}px)`; });
             ticking = false;
         });
     }, { passive: true });
 })();
 
 
-/* ── 6. DOM REFS ──────────────────────────────────────────────────────────── */
+/* ── 6. CURSOR GLOW ──────────────────────────────────────────────────── */
+(function initCursorGlow() {
+    const glow = document.createElement("div");
+    Object.assign(glow.style, {
+        position:      "fixed",
+        width:         "320px",
+        height:        "320px",
+        borderRadius:  "50%",
+        background:    "radial-gradient(circle, rgba(123,104,238,0.07) 0%, transparent 70%)",
+        pointerEvents: "none",
+        zIndex:        "2",
+        transform:     "translate(-50%,-50%)",
+        transition:    "left 0.12s ease, top 0.12s ease",
+    });
+    document.body.appendChild(glow);
+    window.addEventListener("mousemove", (e) => {
+        glow.style.left = `${e.clientX}px`;
+        glow.style.top  = `${e.clientY}px`;
+    }, { passive: true });
+})();
+
+
+/* ── 7. DOM REFS ─────────────────────────────────────────────────────── */
 const form          = document.getElementById("article-form");
 const urlInput      = document.getElementById("article-url");
 const submitBtn     = document.getElementById("submit-btn");
@@ -143,10 +228,9 @@ const copySummaryBtn   = document.getElementById("copy-summary");
 const copyKeyPointsBtn = document.getElementById("copy-key-points");
 
 
-/* ── 7. FORM SUBMIT ───────────────────────────────────────────────────────── */
+/* ── 8. FORM SUBMIT ──────────────────────────────────────────────────── */
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
-
     const url = urlInput.value.trim();
     if (!url) return;
 
@@ -156,23 +240,18 @@ form.addEventListener("submit", async (e) => {
     submitBtn.disabled    = true;
 
     try {
-        const response = await fetch("/api/summarize", {
-            method:  "POST",
+        const res  = await fetch("/api/summarize", {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ url }),
+            body: JSON.stringify({ url }),
         });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Failed to analyse the article.");
-
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to analyse the article.");
         renderResults(data, url);
-
     } catch (err) {
-        showError(
-            err.message.startsWith("Failed to fetch")
-                ? "Could not connect to the server. Make sure it is running."
-                : err.message
-        );
+        showError(err.message.startsWith("Failed to fetch")
+            ? "Could not connect to the server."
+            : err.message);
     } finally {
         loader.style.display = "none";
         submitBtn.disabled   = false;
@@ -180,9 +259,8 @@ form.addEventListener("submit", async (e) => {
 });
 
 
-/* ── 8. RENDER RESULTS ────────────────────────────────────────────────────── */
+/* ── 9. RENDER RESULTS ───────────────────────────────────────────────── */
 function renderResults(data, url) {
-    // Basic fields
     articleTitle.textContent = data.title || "Article";
     originalLink.href        = url;
 
@@ -190,59 +268,43 @@ function renderResults(data, url) {
     sourceBadge.className   = `source-badge source-${data.source}`;
 
     if (data.source !== "direct") {
-        sourceMsg.textContent = "Retrieved from an archived copy — the original may have a paywall.";
+        sourceMsg.textContent    = "Retrieved from an archived copy — the original may have a paywall.";
         sourceInfo.style.display = "block";
     } else {
         sourceInfo.style.display = "none";
     }
 
-    const wordCount = (data.summary || "").split(/\s+/).length;
-    readingTime.textContent = `${Math.max(1, Math.ceil(wordCount / 200))} min`;
+    const wc = (data.summary || "").split(/\s+/).length;
+    readingTime.textContent = `${Math.max(1, Math.ceil(wc / 200))} min`;
+    summaryEl.textContent   = data.summary || "No summary available.";
 
-    summaryEl.textContent = data.summary || "No summary available.";
-
-    // Key points with staggered animation
+    // Staggered key points
     keyPointsEl.innerHTML = "";
     (data.key_points || []).forEach((point, i) => {
         const div = document.createElement("div");
         div.className = "key-point";
-        div.innerHTML = `<span class="count-badge" aria-hidden="true">${i + 1}</span><span>${escapeHtml(point)}</span>`;
+        div.innerHTML = `<span class="count-badge">${i + 1}</span><span>${escapeHtml(point)}</span>`;
         keyPointsEl.appendChild(div);
-
-        // Stagger the slide-in
-        setTimeout(() => {
-            div.classList.add("visible");
-        }, i * 90);
+        setTimeout(() => div.classList.add("visible"), i * 100);
     });
 
     renderSentiment(data.sentiment);
-
-    // Reveal results panel
     results.style.display = "block";
-    // Re-attach tilt to the newly visible card
     document.querySelectorAll(".results-card").forEach(initTilt);
-
-    setTimeout(() => {
-        results.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 120);
+    setTimeout(() => results.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
 }
 
 
-/* ── 9. SENTIMENT ─────────────────────────────────────────────────────────── */
-function renderSentiment(sentiment) {
-    if (!sentiment) return;
-    const label  = sentiment.overall || "Neutral";
-    const scores = sentiment.scores  || {};
-
-    sentimentLabel.textContent = label;
-    sentimentLabel.className   = `sentiment-${label.toLowerCase()}`;
-
-    compoundScore.textContent = (scores.compound ?? 0).toFixed(2);
-    positiveScore.textContent = (scores.pos      ?? 0).toFixed(2);
-    negativeScore.textContent = (scores.neg      ?? 0).toFixed(2);
-    neutralScore.textContent  = (scores.neu      ?? 0).toFixed(2);
-
-    // Animate bars (CSS transition picks this up)
+/* ── 10. SENTIMENT ───────────────────────────────────────────────────── */
+function renderSentiment(s) {
+    if (!s) return;
+    const scores = s.scores || {};
+    sentimentLabel.textContent = s.overall || "Neutral";
+    sentimentLabel.className   = `sentiment-${(s.overall || "neutral").toLowerCase()}`;
+    compoundScore.textContent  = (scores.compound ?? 0).toFixed(2);
+    positiveScore.textContent  = (scores.pos ?? 0).toFixed(2);
+    negativeScore.textContent  = (scores.neg ?? 0).toFixed(2);
+    neutralScore.textContent   = (scores.neu ?? 0).toFixed(2);
     requestAnimationFrame(() => {
         positiveMeter.style.width = `${(scores.pos ?? 0) * 50}%`;
         negativeMeter.style.width = `${(scores.neg ?? 0) * 50}%`;
@@ -250,15 +312,11 @@ function renderSentiment(sentiment) {
 }
 
 
-/* ── 10. COPY BUTTONS ─────────────────────────────────────────────────────── */
-copySummaryBtn.addEventListener("click", () =>
-    copyText(summaryEl.textContent, copySummaryBtn)
-);
-
+/* ── 11. COPY ────────────────────────────────────────────────────────── */
+copySummaryBtn.addEventListener("click", () => copyText(summaryEl.textContent, copySummaryBtn));
 copyKeyPointsBtn.addEventListener("click", () => {
     const text = [...keyPointsEl.querySelectorAll(".key-point span:last-child")]
-        .map((el, i) => `${i + 1}. ${el.textContent}`)
-        .join("\n");
+        .map((el, i) => `${i + 1}. ${el.textContent}`).join("\n");
     copyText(text, copyKeyPointsBtn);
 });
 
@@ -273,32 +331,26 @@ async function copyText(text, btn) {
 }
 
 
-/* ── 11. ERROR HELPERS ────────────────────────────────────────────────────── */
+/* ── 12. ERROR ───────────────────────────────────────────────────────── */
 function showError(msg) {
-    errorBox.innerHTML     = `<i class="fas fa-exclamation-triangle me-2"></i>${escapeHtml(msg)}`;
+    errorBox.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>${escapeHtml(msg)}`;
     errorBox.style.display = "block";
-    // Re-trigger shake animation
     errorBox.style.animation = "none";
     void errorBox.offsetWidth;
     errorBox.style.animation = "";
 }
-
 function hideError() {
     errorBox.style.display = "none";
-    errorBox.innerHTML     = "";
+    errorBox.innerHTML = "";
 }
 
 
-/* ── 12. UTILITY ──────────────────────────────────────────────────────────── */
+/* ── 13. UTILS ───────────────────────────────────────────────────────── */
 function escapeHtml(str) {
-    const m = { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" };
+    const m = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
     return String(str).replace(/[&<>"']/g, c => m[c]);
 }
 
-
-/* ── 13. BOOTSTRAP TOOLTIPS ───────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-        new bootstrap.Tooltip(el);
-    });
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
 });
