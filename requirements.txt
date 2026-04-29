@@ -1,0 +1,13 @@
+# Core web framework
+Flask==3.0.3
+flask-cors==4.0.1
+
+# HTTP client
+requests==2.32.3
+
+# HTML parsing
+beautifulsoup4==4.12.3
+lxml==5.2.2          # faster HTML parser for BeautifulSoup
+
+# NLP (lightweight — NLTK only, ~2 MB download for data)
+nltk==3.8.1
