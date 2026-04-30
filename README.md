@@ -294,7 +294,7 @@ No paid API keys required. The app is entirely self-contained.
 
 **Samridhi Gupta**
 
-[![GitHub](https://img.shields.io/badge/GitHub-SamridhiiGupta-181717?style=flat-square&logo=github)](https://github.com/SamridhiiGupta)
+[![GitHub](https://img.shields.io/badge/GitHub-SamridhiiGupta-181717?style=flat-square&logo=github)]([https://github.com/SamridhiiGupta](https://github.com/SamridhiiiGupta))
 
 ---
 
