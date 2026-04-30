@@ -1,4 +1,4 @@
-<div align="center">
+<div align="center"
 
 <img src="https://img.shields.io/badge/BrieflyAI-Smart%20News%20Summarizer-7b68ee?style=for-the-badge&logo=lightning&logoColor=white" alt="BrieflyAI"/>
 
